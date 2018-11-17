@@ -9,7 +9,7 @@ const { TelegrafMongoSession } = require('telegraf-session-mongodb')
 
 const BOT_TOKEN = process.env.BOT_TOKEN || '';
 const PORT = process.env.PORT || 3000;
-const URL = process.env.URL || 'https://thearvindbot.herokuapp.com';
+const URL = process.env.HEROKU_URL || 'https://thearvindbot.herokuapp.com';
 
 const bot = new Telegraf(BOT_TOKEN)
 
@@ -27,8 +27,7 @@ bot.use((...args) => session.middleware(...args));
 // Register logger middleware
 bot.use((ctx, next) => {
     const start = new Date();
-    console.log(ctx.from.username, ':', ctx.message.text);
-
+    console.log(ctx.from.username, ':', ctx.message.text)
     if (ctx.appSession && !ctx.appSession.id) {
         ctx.appSession.key = `${ctx.chat.id}:${ctx.from.id}`
         ctx.appSession.id = ctx.from.id
@@ -37,13 +36,12 @@ bot.use((ctx, next) => {
         ctx.appSession.last_name = ctx.from.last_name
         ctx.appSession.language_code = ctx.from.language_code
         ctx.appSession.is_bot = ctx.from.is_bot
-        ctx.appSession.io = ctx.appSession.io || []
+        ctx.appSession.io = []
     }
 
     return next().then(() => {
         const ms = new Date() - start
         console.log('response time %sms', ms)
-        console.log('\n')
     })
 })
 
@@ -54,13 +52,20 @@ bot.catch((err) => {
 function getStatic(ctx) {
     return `Hello, ${ctx.from.first_name} ${ctx.from.last_name}
         
-_Feel Free to ask any question. You can use the below commands as well_
+_Feel Free to ask any question_
 
-/start - *list the commands*
+> You can ask me 
+    -- what's up?
+    -- Am I happy?
+    -- You can greet me, say hello
+
+_You can use the below commands as well_
+
 /help - *list the commands*
-/randomPicture - *shows a random picture*
-/randomQuote - *shows a random quote*
-/randomJoke - *shows a dad joke*
+/randompicture - *shows a random picture*
+/randomquote - *shows a random quote*
+/randomjoke - *shows a joke*
+/randomgif - *shows a Gif*
     `
 }
 // /nerdJoke - *shows a nerd joke from ICNDB at your expense*
@@ -77,17 +82,17 @@ bot.on('sticker', (ctx) =>
     ctx.reply('👍')
 )
 
-bot.command('randomPicture', (ctx) =>
+bot.command('randompicture', (ctx) =>
     ctx.replyWithPhoto({
-        url: 'https://picsum.photos/800/600/?random',
+        url: 'https://placeimg.com/640/480/any',
         filename: 'random.jpg'
     })
 )
 
-bot.command('randomQuote', (ctx) =>
+bot.command('randomquote', (ctx) =>
     request('https://api.forismatic.com/api/1.0/?method=getQuote&format=json&lang=en', function (error, response, body) {
         if (error) {
-            console.log('randomQuote', 'error:', error);
+            console.log('randomquote', 'error:', error);
         }
         body = JSON.parse(body)
         ctx.reply(`
@@ -121,7 +126,7 @@ bot.command('explicitJoke', (ctx) =>
     })
 )
 
-bot.command('randomJoke', (ctx) => {
+bot.command('randomjoke', (ctx) => {
     request({
         url: 'https://icanhazdadjoke.com/',
         headers: {
@@ -138,6 +143,20 @@ bot.command('randomJoke', (ctx) => {
     })
 })
 
+
+bot.command('randomgif', (ctx) =>
+    request(`https://api.giphy.com/v1/gifs/random?api_key=${process.env.GIPHY_API}&tag=&rating=PG-13`, function (error, response, body) {
+        if (error) {
+            console.log('explicitJoke', 'error:', error);
+        }
+        body = JSON.parse(body)
+        ctx.replyWithDocument({
+            url: body.data.image_original_url,
+            filename: body.data.id + '.' + body.data.type
+        })
+    })
+)
+
 // should be last
 bot.on('message', (ctx) => {
     let apiaiReq = apiai.textRequest(ctx.message.text, {
@@ -148,10 +167,11 @@ bot.on('message', (ctx) => {
         let aiText = response.result.fulfillment.speech;
         ctx.reply(aiText);
 
-        ctx.appSession.io.push({
-            i: ctx.message.text,
-            o: aiText
-        })
+        // ctx.appSession.io.push({
+        //     i: ctx.message.text,
+        //     o: aiText
+        // })
+        // session.saveSession(ctx.appSession.key, ctx.appSession)
     });
 
     apiaiReq.on('error', function (error) {
