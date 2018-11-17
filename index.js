@@ -4,20 +4,22 @@ const request = require('request')
 const Telegraf = require('telegraf')
 const Extra = require('telegraf/extra')
 const Markup = require('telegraf/markup')
-// const session = require('telegraf/session')
 const AnyCase = require('telegraf-anycase-commands')
 const { TelegrafMongoSession } = require('telegraf-session-mongodb')
+
+const BOT_TOKEN = process.env.BOT_TOKEN || '';
+const PORT = process.env.PORT || 3000;
+const URL = process.env.URL || 'https://thearvindbot.herokuapp.com';
+
+const bot = new Telegraf(BOT_TOKEN)
 
 const apiai = require('apiai')(process.env.APIAI_TOKEN, {
     requestSource: 'TelegramBot'
 });
-const bot = new Telegraf(process.env.BOT_TOKEN)
 
 // case insensitive commands
 AnyCase.apply(bot)
 
-// Register session middleware
-// bot.use(session())
 // Mongodb session
 let session;
 bot.use((...args) => session.middleware(...args));
@@ -35,6 +37,7 @@ bot.use((ctx, next) => {
         ctx.appSession.last_name = ctx.from.last_name
         ctx.appSession.language_code = ctx.from.language_code
         ctx.appSession.is_bot = ctx.from.is_bot
+        ctx.appSession.io = ctx.appSession.io || []
     }
 
     return next().then(() => {
@@ -124,7 +127,7 @@ bot.command('randomJoke', (ctx) => {
         headers: {
             'Accept': 'application/json'
         }
-     }, function (error, response, body) {
+    }, function (error, response, body) {
         if (error) {
             console.log('nerdJoke', 'error:', error);
         }
@@ -143,10 +146,15 @@ bot.on('message', (ctx) => {
 
     apiaiReq.on('response', (response) => {
         let aiText = response.result.fulfillment.speech;
-        ctx.reply(aiText)
+        ctx.reply(aiText);
+
+        ctx.appSession.io.push({
+            i: ctx.message.text,
+            o: aiText
+        })
     });
 
-    apiaiReq.on('error', function(error) {
+    apiaiReq.on('error', function (error) {
         console.log('apiaiReq', error);
     });
 
@@ -161,7 +169,14 @@ MongoClient.connect(process.env.MONGODB_URI, { useNewUrlParser: true }).then((cl
         collectionName: 'sessions',
         sessionName: 'appSession'
     });
-    bot.startPolling()
+
+    if (process.env.WEBHOOKS === 'true') {
+        bot.telegram.setWebhook(`${URL}/bot${BOT_TOKEN}`)
+        bot.startWebhook(`/bot${BOT_TOKEN}`, null, PORT)
+    } else {
+        bot.telegram.deleteWebhook()
+        bot.startPolling()
+    }
     console.log('Bot is up and running!');
 });
 
