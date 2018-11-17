@@ -65,12 +65,11 @@ _You can use the below commands as well_
 /randompicture - *shows a random picture*
 /randomquote - *shows a random quote*
 /randomjoke - *shows a joke*
-/randomgif - *shows a Gif*
     `
 }
 // /nerdJoke - *shows a nerd joke from ICNDB at your expense*
 // /explicitJoke - *shows an explicit joke from ICNDB at your expense*
-
+// /randomgif - *shows a Gif*
 
 bot.start((ctx) =>
     ctx.replyWithMarkdown(getStatic(ctx))
@@ -147,7 +146,7 @@ bot.command('randomjoke', (ctx) => {
 bot.command('randomgif', (ctx) =>
     request(`https://api.giphy.com/v1/gifs/random?api_key=${process.env.GIPHY_API}&tag=&rating=PG-13`, function (error, response, body) {
         if (error) {
-            console.log('explicitJoke', 'error:', error);
+            console.log('randomgif', 'error:', error);
         }
         body = JSON.parse(body)
         ctx.replyWithDocument({
