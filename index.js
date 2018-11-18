@@ -27,7 +27,7 @@ bot.use((...args) => session.middleware(...args));
 // Register logger middleware
 bot.use((ctx, next) => {
     const start = new Date();
-    console.log(ctx.from.username, ':', ctx.message.text)
+    console.log(ctx.from.username || ctx.from.first_name, ':', ctx.message.text)
     if (ctx.appSession && !ctx.appSession.id) {
         ctx.appSession.key = `${ctx.chat.id}:${ctx.from.id}`
         ctx.appSession.id = ctx.from.id
